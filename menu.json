@@ -1,0 +1,7 @@
+[
+  {"id": "sourdough", "name": "Sourdough loaf", "desc": "Crackly crust, open crumb. Our most requested.", "price": 10, "unit": "loaf", "icon": "loaf", "tag": "Most requested", "limit": null},
+  {"id": "cookie", "name": "Chocolate chip cookie", "desc": "Brown butter, big chunks, flaky salt.", "price": 3, "unit": "cookie", "icon": "cookie", "limit": null},
+  {"id": "cookie8", "name": "Cookie 8-pack", "desc": "Eight cookies — saves you $14.", "price": 10, "unit": "pack", "icon": "cookies", "limit": null},
+  {"id": "coffeecake", "name": "Coffee cake", "desc": "Cinnamon streusel, tender crumb.", "price": 5, "unit": "slice", "icon": "cake", "limit": null},
+  {"id": "cinnamon", "name": "Cinnamon roll", "desc": "Soft, swirled, finished with icing.", "price": 5, "unit": "roll", "icon": "roll", "limit": null}
+]

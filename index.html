@@ -27,22 +27,16 @@ const SETTINGS = {
 
   // Payment details shown to customers
   venmoHandle: "@flavorsbyfrangipane",
-  stripePaymentLink: "",               // e.g. https://buy.stripe.com/xxxx  (Apple Pay / card)
+  onlineCheckout: false,               // Apple Pay / card: send customers to Stripe checkout after they order
 
   // Orders close this many days before Saturday, at 11:59 pm (2 = Thursday night)
   cutoffDaysBefore: 2,
   pickupHours: "9 am – 1 pm",          // shown on the form
 };
 
-// The menu. Change prices, add or remove items any time.
-// "limit" (optional) = max you'll take per Saturday; leave null for no limit.
-const MENU = [
-  { id: "sourdough", name: "Sourdough loaf", desc: "Crackly crust, open crumb. Our most requested.", price: 10, unit: "loaf", icon: "loaf", tag: "Most requested" },
-  { id: "cookie",    name: "Chocolate chip cookie", desc: "Brown butter, big chunks, flaky salt.", price: 3, unit: "cookie", icon: "cookie" },
-  { id: "cookie8",   name: "Cookie 8-pack", desc: "Eight cookies — saves you $14.", price: 10, unit: "pack", icon: "cookies" },
-  { id: "coffeecake",name: "Coffee cake", desc: "Cinnamon streusel, tender crumb.", price: 5, unit: "slice", icon: "cake" },
-  { id: "cinnamon",  name: "Cinnamon roll", desc: "Soft, swirled, finished with icing.", price: 5, unit: "roll", icon: "roll" },
-];
+// The menu (items, prices, optional weekly limits) lives in menu.json.
+// The order sheet reads the same file, so prices are changed in one place.
+let MENU = [];
 </script>
 <style>
 :root{
@@ -257,7 +251,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
 </div>
 
 <script>
-(function(){
+(async function(){
   const ICONS = {
     loaf:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22c0-7 5-12 12-12s12 5 12 12v2H4z"/><path d="M11 15l3 4M16 13l3 4M21 15l3 4"/></svg>',
     cookie:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="16" cy="16" r="11"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="14" r="1.3" fill="currentColor"/><circle cx="14" cy="20" r="1.3" fill="currentColor"/><circle cx="20" cy="21" r="1.3" fill="currentColor"/></svg>',
@@ -267,6 +261,13 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   };
   const $ = s => document.querySelector(s);
   const money = n => "$" + (Math.round(n*100)/100).toFixed(n % 1 ? 2 : 0);
+  try {
+    const r = await fetch("menu.json?v=" + Math.floor(Date.now()/300000));
+    if (!r.ok) throw new Error("menu");
+    MENU = await r.json();
+  } catch(_){
+    $("#menu").innerHTML = '<p class="hint">The menu didn\u2019t load \u2014 refresh the page to try again.</p>';
+  }
   const qty = Object.fromEntries(MENU.map(m => [m.id, 0]));
   let counts = {}; // already-ordered counts from the sheet (for limits)
 
@@ -337,8 +338,8 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   function payNote(){
     const v = document.querySelector('input[name="pay"]:checked').value;
     $("#payNote").innerHTML =
-      v === "Venmo" ? `Venmo <code>${SETTINGS.venmoHandle}</code> and put your name in the note. Pay ahead or on the porch.`
-    : v === "Apple Pay / card" ? (SETTINGS.stripePaymentLink ? "After you place your order, you'll get a secure checkout button for Apple Pay, Google Pay or card." : "Tap to pay with Apple Pay or card at pickup.")
+      v === "Venmo" ? `After you place your order, you'll get a button that opens Venmo to <code>${SETTINGS.venmoHandle}</code> with your total filled in.`
+    : v === "Apple Pay / card" ? (SETTINGS.onlineCheckout ? "After you place your order, you'll go to a secure checkout page for Apple Pay, Google Pay or card." : "Tap to pay with Apple Pay or card at pickup.")
     : "Bring cash to the porch. Exact change is a kindness, but we'll have some on hand.";
   }
   document.querySelectorAll('input[name="pay"]').forEach(r => r.addEventListener("change", payNote));
@@ -363,24 +364,32 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
       total: L.reduce((a,l)=>a+l.sub,0),
     };
 
+    let leaving = false;
     const btn = $("#submitBtn"); btn.disabled = true; btn.classList.add("busy"); btn.textContent = "Sending…";
     try {
       if (SETTINGS.sheetUrl){
         const r = await fetch(SETTINGS.sheetUrl, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(order) });
         const j = await r.json().catch(() => ({ ok:true }));
         if (!j.ok) throw new Error(j.error || "Order not saved");
+        if (j.orderNo) order.orderNo = j.orderNo;
+        if (j.checkoutUrl){ leaving = true; btn.textContent = "Opening checkout\u2026"; location.href = j.checkoutUrl; return; }
       }
       showDone(order);
     } catch(x){
       err.textContent = "Your order didn't go through — check your connection and tap Place order again.";
       err.hidden = false;
     } finally {
-      btn.classList.remove("busy"); btn.textContent = "Place order"; updateBar();
+      if (!leaving){ btn.classList.remove("busy"); btn.textContent = "Place order"; updateBar(); }
     }
   });
 
+  function venmoUrl(o){
+    const user = encodeURIComponent(SETTINGS.venmoHandle.replace(/^@/, ""));
+    return `https://venmo.com/${user}?txn=pay&audience=private&amount=${encodeURIComponent(o.total.toFixed(2))}&note=${encodeURIComponent("The Coop order " + o.orderNo)}`;
+  }
   function showDone(o){
     $("#formView").hidden = true; $("#bar").hidden = true; $("#doneView").hidden = false;
+    $("#doneView h2").textContent = "You're on the list!"; $("#receipt").hidden = false;
     $("#demoNote").hidden = !!SETTINGS.sheetUrl;
     $("#doneMsg").textContent = `See you ${pickupLong}, ${o.name.split(" ")[0]}. Your order will be boxed and waiting on the porch, ${SETTINGS.pickupHours}.`;
     $("#receipt").innerHTML =
@@ -388,8 +397,8 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
       o.items.map(i => `<div class="ln"><span>${i.qty}× ${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join("") +
       `<div class="ln tot"><span>Total</span><span>${money(o.total)}</span></div>`;
     $("#payAction").innerHTML =
-      o.payment === "Venmo" ? `<p class="paynote">Venmo <code>${SETTINGS.venmoHandle}</code> · ${money(o.total)} · note “${o.orderNo}”</p>`
-    : (o.payment === "Apple Pay / card" && SETTINGS.stripePaymentLink) ? `<a class="btn-pay" href="${SETTINGS.stripePaymentLink}" target="_blank" rel="noopener">Pay ${money(o.total)} with Apple Pay or card</a>`
+      o.payment === "Venmo" ? `<a class="btn-pay" href="${venmoUrl(o)}" target="_blank" rel="noopener">Pay ${money(o.total)} with Venmo</a><p class="paynote">Opens Venmo with the amount filled in. If it doesn't open, send ${money(o.total)} to <code>${SETTINGS.venmoHandle}</code> with the note “${o.orderNo}”.</p>`
+    : (o.payment === "Apple Pay / card" && SETTINGS.onlineCheckout) ? `<p class="paynote">Online checkout didn't open, so your order is saved and you can pay at pickup.</p>`
     : "";
     window.scrollTo({ top:0, behavior:"smooth" });
   }
@@ -409,6 +418,29 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   }
 
   renderMenu(); updateBar(); payNote(); loadCounts();
+
+  /* ---------- Coming back from Stripe checkout ---------- */
+  const q = new URLSearchParams(location.search);
+  const backNo = (q.get("paid") || q.get("unpaid") || "").replace(/[^A-Za-z0-9-]/g,"").slice(0,12);
+  function notice(title, msg){
+    $("#formView").hidden = true; $("#bar").hidden = true; $("#doneView").hidden = false;
+    $("#doneView h2").textContent = title; $("#doneMsg").textContent = msg;
+    $("#demoNote").hidden = true; $("#receipt").hidden = true; $("#payAction").innerHTML = "";
+    history.replaceState(null, "", location.pathname);
+  }
+  const unsure = `Order ${backNo} is saved, but we couldn't confirm the payment just now. If you were charged, you're all set and we'll match it up. If not, you can pay at pickup.`;
+  if (q.get("paid") && q.get("session_id")){
+    const sid = q.get("session_id");
+    notice("Confirming payment\u2026", `One moment while we confirm order ${backNo}.`);
+    try {
+      const j = await (await fetch(SETTINGS.sheetUrl + "?verify=" + encodeURIComponent(sid))).json();
+      const day = j.pickup ? new Date(j.pickup + "T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}) : "Saturday";
+      if (j.paid) notice("You're all paid up!", `Thank you! We received ${money(j.total)} for order ${j.orderNo}. It will be boxed and waiting on the porch ${day}, ${SETTINGS.pickupHours}.`);
+      else notice("Order saved", unsure);
+    } catch(_){ notice("Order saved", unsure); }
+  } else if (q.get("unpaid")){
+    notice("Order saved", `Order ${backNo} is saved. Checkout wasn't finished, so you can pay at pickup.`);
+  }
 })();
 </script>
 </body>
