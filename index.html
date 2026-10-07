@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Coop · Front-porch bakery pre-orders</title>
+<meta name="description" content="Reserve fresh sourdough, cookies, coffee cake and cinnamon rolls for Saturday porch pickup.">
+<meta name="theme-color" content="#F8F3E7">
+<link rel="canonical" href="https://thecoopbakery.com/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://thecoopbakery.com/">
+<meta property="og:title" content="The Coop · Front-porch bakery">
+<meta property="og:description" content="Pre-order fresh sourdough, cookies, coffee cake and cinnamon rolls for Saturday porch pickup.">
+<meta property="og:image" content="https://thecoopbakery.com/logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%234E2C17'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' font-weight='700' text-anchor='middle' fill='%23F8F3E7'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<script>
+/* ============================================================
+   SETTINGS — edit these and commit; the site updates in about a minute
+   ============================================================ */
+const SETTINGS = {
+  // Paste the Web App URL from Google Apps Script here (see setup steps).
+  sheetUrl: "",
+
+  // Payment details shown to customers
+  venmoHandle: "@flavorsbyfrangipane",
+  stripePaymentLink: "",               // e.g. https://buy.stripe.com/xxxx  (Apple Pay / card)
+
+  // Orders close this many days before Saturday, at 11:59 pm (2 = Thursday night)
+  cutoffDaysBefore: 2,
+  pickupHours: "9 am – 1 pm",          // shown on the form
+};
+
+// The menu. Change prices, add or remove items any time.
+// "limit" (optional) = max you'll take per Saturday; leave null for no limit.
+const MENU = [
+  { id: "sourdough", name: "Sourdough loaf", desc: "Crackly crust, open crumb. Our most requested.", price: 10, unit: "loaf", icon: "loaf", tag: "Most requested" },
+  { id: "cookie",    name: "Chocolate chip cookie", desc: "Brown butter, big chunks, flaky salt.", price: 3, unit: "cookie", icon: "cookie" },
+  { id: "cookie8",   name: "Cookie 8-pack", desc: "Eight cookies — saves you $14.", price: 10, unit: "pack", icon: "cookies" },
+  { id: "coffeecake",name: "Coffee cake", desc: "Cinnamon streusel, tender crumb.", price: 5, unit: "slice", icon: "cake" },
+  { id: "cinnamon",  name: "Cinnamon roll", desc: "Soft, swirled, finished with icing.", price: 5, unit: "roll", icon: "roll" },
+];
+</script>
+<style>
+:root{
+  --ground:#F8F3E7; --surface:#FFFCF5; --surface-2:#F1E9D8; --ink:#3F2614; --muted:#7A6350;
+  --line:#E4D9C5; --yolk:#4E2C17; --yolk-soft:#F1E6D2; --barn:#8A4B2C; --on-yolk:#F8F3E7;
+  --focus:#2F6FDB; --shadow:0 1px 2px rgba(63,38,20,.06),0 10px 26px -14px rgba(63,38,20,.28);
+  --display:"Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  --body:"Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+img{max-width:100%}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.5 var(--body);
+  padding-inline:16px;padding-block:0 120px}
+[hidden]{display:none!important}
+.wrap{max-width:640px;margin:0 auto}
+
+/* Header */
+header{display:grid;justify-items:center;text-align:center;gap:6px;padding-block:40px 20px}
+.mark{width:84px;height:84px}
+h1{margin:0;line-height:0}
+.logo{width:min(420px,100%);height:auto;display:block}
+.tagline{margin:4px 0 0;color:var(--muted);font:600 13px var(--body);letter-spacing:.22em;text-transform:uppercase}
+.tagline b{color:var(--barn);font-weight:600}
+
+/* Pickup ticket */
+.ticket{margin-top:18px;display:flex;align-items:stretch;background:var(--yolk);color:var(--on-yolk);
+  border-radius:14px;overflow:hidden;box-shadow:var(--shadow);text-align:left;width:100%}
+.ticket .when{padding:14px 18px;flex:1;min-width:0}
+.ticket .label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.ticket .date{font:600 28px/1.05 var(--display);margin-top:2px}
+.ticket .sub{font-size:13.5px;margin-top:4px}
+.ticket .stub{border-left:2px dashed rgba(248,243,231,.4);padding:14px 16px;display:grid;place-content:center;text-align:center;min-width:104px}
+.ticket .stub .big{font:600 30px/1 var(--display)}
+.ticket .stub .small{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-top:4px}
+
+/* Sections */
+section{margin-top:28px}
+h2{font:600 28px/1.15 var(--display);margin:0 0 12px;text-wrap:balance}
+.hint{color:var(--muted);font-size:14px;margin:-6px 0 14px}
+
+/* Menu */
+.menu{display:grid;gap:10px}
+.item{display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:16px;padding:14px;transition:border-color .15s, background .15s}
+.item.on{border-color:var(--yolk);background:linear-gradient(0deg,var(--surface),var(--surface)) padding-box}
+.item.on .ico{background:var(--yolk);color:var(--on-yolk)}
+.ico{width:56px;height:56px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;color:var(--ink);transition:background .15s,color .15s}
+.ico svg{width:32px;height:32px}
+.info{min-width:0}
+.name{font-weight:700;font-size:16.5px;line-height:1.25;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--barn);
+  border:1px solid currentColor;border-radius:999px;padding:1px 7px}
+.desc{color:var(--muted);font-size:14px;margin-top:2px}
+.price{font-variant-numeric:tabular-nums;font-weight:600;font-size:14.5px;margin-top:4px}
+.price span{color:var(--muted);font-weight:500}
+.left{font-size:12.5px;color:var(--barn);font-weight:600;margin-top:2px}
+
+.stepper{display:flex;align-items:center;gap:2px;background:var(--surface-2);border-radius:999px;padding:4px}
+.stepper button{width:36px;height:36px;border-radius:50%;border:0;background:transparent;color:var(--ink);
+  font:600 20px/1 var(--body);cursor:pointer;display:grid;place-items:center}
+.stepper button:hover:not(:disabled){background:var(--line)}
+.stepper button.plus{background:var(--ink);color:var(--surface)}
+.stepper button.plus:hover:not(:disabled){background:var(--ink);opacity:.85}
+.stepper button:disabled{opacity:.3;cursor:not-allowed}
+.stepper output{min-width:22px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.item.soldout{opacity:.55}
+
+/* Form fields */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+label.f{display:grid;gap:6px;font-weight:600;font-size:14px}
+label.f small{font-weight:400;color:var(--muted)}
+input[type=text],input[type=tel],input[type=email],textarea{width:100%;font:16px/1.4 var(--body);color:var(--ink);
+  background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+textarea{min-height:80px;resize:vertical}
+input:focus-visible,textarea:focus-visible,button:focus-visible,.pay input:focus-visible+span{outline:3px solid var(--focus);outline-offset:2px}
+.err{color:var(--barn);font-size:13px;font-weight:600}
+
+/* Payment */
+.pays{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:520px){.pays{grid-template-columns:1fr}}
+.pay{position:relative;cursor:pointer}
+.pay input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.pay span{display:grid;gap:4px;height:100%;padding:14px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface)}
+.pay b{font-size:15.5px}
+.pay em{font-style:normal;color:var(--muted);font-size:13px;line-height:1.35}
+.pay input:checked+span{border-color:var(--yolk);background:var(--yolk-soft)}
+.paynote{margin-top:10px;font-size:14px;color:var(--muted);background:var(--surface-2);border-radius:12px;padding:12px 14px}
+.paynote code{font:600 14px var(--body);color:var(--ink)}
+
+/* Sticky bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+  background:color-mix(in srgb,var(--ground) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+.bar .in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:14px}
+.sum{flex:1;min-width:0}
+.sum .t{font:700 30px/1 var(--display);font-variant-numeric:tabular-nums}
+.sum .c{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go{border:0;border-radius:999px;background:var(--yolk);color:var(--on-yolk);font:700 16px var(--body);padding:15px 24px;cursor:pointer;white-space:nowrap}
+.go:disabled{opacity:.45;cursor:not-allowed}
+.go.busy{opacity:.7;cursor:progress}
+
+/* Done */
+.done{text-align:center;padding-block:40px 20px;display:grid;justify-items:center;gap:10px}
+.done h2{font-size:40px;margin:0}
+.done p{margin:0;color:var(--muted);max-width:44ch}
+.receipt{width:100%;margin-top:14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:8px}
+.receipt .ln{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums}
+.receipt .tot{border-top:1px dashed var(--line);padding-top:10px;margin-top:4px;font-weight:700;font-size:17px}
+.receipt .meta{color:var(--muted);font-size:14px}
+.btn-pay{display:inline-block;margin-top:6px;background:var(--yolk);color:var(--on-yolk);text-decoration:none;font-weight:700;border-radius:999px;padding:14px 22px}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;font:500 14px var(--body);cursor:pointer;margin-top:8px}
+.demo{font-size:12.5px;color:var(--barn);font-weight:600}
+
+footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
+
+@media (prefers-reduced-motion: no-preference){
+  .item{transition:border-color .15s, background .15s, transform .15s}
+  .stepper button:active:not(:disabled){transform:scale(.92)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1><img class="logo" src="logo.png" alt="The Coop" width="560" height="194"></h1>
+  <p class="tagline">Front-porch bakery · <b>Saturdays</b></p>
+
+  <div class="ticket" role="note" aria-live="polite">
+    <div class="when">
+      <div class="label">Pre-ordering for</div>
+      <div class="date" id="pickupDate">Saturday</div>
+      <div class="sub" id="pickupSub">Porch pickup</div>
+    </div>
+    <div class="stub">
+      <div class="big" id="countdown">—</div>
+      <div class="small" id="countdownLabel">left to order</div>
+    </div>
+  </div>
+</header>
+
+<main id="formView">
+  <form id="orderForm" novalidate>
+    <section aria-labelledby="h-menu">
+      <h2 id="h-menu">What should we bake for you?</h2>
+      <p class="hint">Everything's baked fresh the morning of. Walk-ups welcome, but pre-orders get first dibs.</p>
+      <div class="menu" id="menu"></div>
+    </section>
+
+    <section aria-labelledby="h-you">
+      <h2 id="h-you">Who's picking up?</h2>
+      <div class="card">
+        <div class="row">
+          <label class="f" for="name">Name
+            <input id="name" name="name" type="text" autocomplete="name" required>
+          </label>
+          <label class="f" for="phone">Phone <small>for a heads-up text</small>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required>
+          </label>
+        </div>
+        <label class="f" for="email">Email <small>optional</small>
+          <input id="email" name="email" type="email" autocomplete="email">
+        </label>
+        <label class="f" for="notes">Anything we should know? <small>optional — allergies, gift wrap, late pickup</small>
+          <textarea id="notes" name="notes"></textarea>
+        </label>
+        <div class="err" id="formErr" role="alert" hidden></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-pay">
+      <h2 id="h-pay">How would you like to pay?</h2>
+      <div class="pays" role="radiogroup" aria-labelledby="h-pay">
+        <label class="pay"><input type="radio" name="pay" id="pay-cash" value="Cash at pickup" checked><span><b>Cash</b><em>Pay on the porch at pickup</em></span></label>
+        <label class="pay"><input type="radio" name="pay" id="pay-venmo" value="Venmo"><span><b>Venmo</b><em>Send before or at pickup</em></span></label>
+        <label class="pay"><input type="radio" name="pay" id="pay-card" value="Apple Pay / card"><span><b>Apple Pay</b><em>Or any card, secure checkout</em></span></label>
+      </div>
+      <div class="paynote" id="payNote"></div>
+    </section>
+  </form>
+</main>
+
+<main id="doneView" hidden>
+  <div class="done">
+    <svg class="mark" viewBox="0 0 84 84" aria-hidden="true">
+      <circle cx="42" cy="42" r="40" fill="var(--yolk)"/>
+      <path d="M26 43l11 11 22-24" fill="none" stroke="var(--on-yolk)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h2>You're on the list!</h2>
+    <p id="doneMsg">We'll have your order boxed and waiting on the porch.</p>
+    <div class="demo" id="demoNote" hidden>Preview mode — this order wasn't sent anywhere yet.</div>
+    <div class="receipt" id="receipt"></div>
+    <div id="payAction"></div>
+    <button class="link" type="button" id="again">Place another order</button>
+  </div>
+</main>
+
+<footer>Made with butter, on our front porch · Questions? Just knock.</footer>
+</div>
+
+<div class="bar" id="bar">
+  <div class="in">
+    <div class="sum">
+      <div class="t" id="total">$0</div>
+      <div class="c" id="count">Pick something tasty</div>
+    </div>
+    <button class="go" id="submitBtn" type="submit" form="orderForm" disabled>Place order</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ICONS = {
+    loaf:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22c0-7 5-12 12-12s12 5 12 12v2H4z"/><path d="M11 15l3 4M16 13l3 4M21 15l3 4"/></svg>',
+    cookie:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="16" cy="16" r="11"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="14" r="1.3" fill="currentColor"/><circle cx="14" cy="20" r="1.3" fill="currentColor"/><circle cx="20" cy="21" r="1.3" fill="currentColor"/></svg>',
+    cookies:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="18" r="8"/><path d="M17 8.6A8 8 0 1 1 22 24"/><circle cx="10" cy="16" r="1.1" fill="currentColor"/><circle cx="14" cy="20" r="1.1" fill="currentColor"/></svg>',
+    cake:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 24h24V15L4 20z"/><path d="M4 20l24-5"/><path d="M8 17.5c1-1.2 2 .2 3-1s2 .2 3-1 2 .2 3-1"/></svg>',
+    roll:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16.5a1.5 1.5 0 1 1 1.5-1.5 4 4 0 0 1-4 4 5.5 5.5 0 0 1-5.5-5.5A7 7 0 0 1 15 6.5a8.5 8.5 0 0 1 8.5 8.5A10 10 0 0 1 13.5 25"/></svg>',
+  };
+  const $ = s => document.querySelector(s);
+  const money = n => "$" + (Math.round(n*100)/100).toFixed(n % 1 ? 2 : 0);
+  const qty = Object.fromEntries(MENU.map(m => [m.id, 0]));
+  let counts = {}; // already-ordered counts from the sheet (for limits)
+
+  /* ---------- Pickup date: next Saturday whose cutoff hasn't passed ---------- */
+  function pickup(){
+    const now = new Date();
+    const sat = new Date(now); sat.setHours(0,0,0,0);
+    sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7));
+    const cutoff = d => { const c = new Date(d); c.setDate(c.getDate() - SETTINGS.cutoffDaysBefore); c.setHours(23,59,59,999); return c; };
+    while (now > cutoff(sat)) sat.setDate(sat.getDate() + 7);
+    return { sat, cutoff: cutoff(sat), now };
+  }
+  const P = pickup();
+  const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const pickupISO = iso(P.sat);
+  const pickupLong = P.sat.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const cutoffLong = P.cutoff.toLocaleDateString("en-US",{weekday:"long"}) + " at 11:59 pm";
+  $("#pickupDate").textContent = pickupLong;
+  $("#pickupSub").textContent = "Porch pickup " + SETTINGS.pickupHours + " · orders close " + cutoffLong;
+
+  function tick(){
+    const ms = P.cutoff - new Date();
+    if (ms <= 0){ location.reload(); return; }
+    const d = Math.floor(ms/864e5), h = Math.floor(ms/36e5)%24, m = Math.floor(ms/6e4)%60;
+    $("#countdown").textContent = d >= 1 ? d + (d===1?" day":" days") : h >= 1 ? h + (h===1?" hr":" hrs") : m + " min";
+  }
+  tick(); setInterval(tick, 30000);
+
+  /* ---------- Menu ---------- */
+  function remaining(m){ return m.limit == null ? Infinity : Math.max(0, m.limit - (counts[m.id]||0)); }
+  function renderMenu(){
+    $("#menu").innerHTML = MENU.map(m => {
+      const rem = remaining(m), sold = rem === 0;
+      return `<div class="item${qty[m.id]?" on":""}${sold?" soldout":""}" data-id="${m.id}">
+        <div class="ico">${ICONS[m.icon]||ICONS.loaf}</div>
+        <div class="info">
+          <div class="name">${m.name}${m.tag?`<span class="tag">${m.tag}</span>`:""}</div>
+          <div class="desc">${m.desc||""}</div>
+          <div class="price">${money(m.price)} <span>/ ${m.unit}</span></div>
+          ${sold ? `<div class="left">Fully booked this week</div>` : rem < 6 ? `<div class="left">Only ${rem} left</div>` : ""}
+        </div>
+        <div class="stepper" role="group" aria-label="${m.name} quantity">
+          <button type="button" class="minus" data-d="-1" aria-label="Remove one ${m.name}" ${qty[m.id]?"":"disabled"}>−</button>
+          <output aria-live="polite">${qty[m.id]}</output>
+          <button type="button" class="plus" data-d="1" aria-label="Add one ${m.name}" ${qty[m.id] >= Math.min(rem, 24) ? "disabled":""}>+</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  $("#menu").addEventListener("click", e => {
+    const b = e.target.closest("button[data-d]"); if (!b) return;
+    const id = b.closest(".item").dataset.id, m = MENU.find(x => x.id === id);
+    qty[id] = Math.max(0, Math.min(Math.min(remaining(m), 24), qty[id] + Number(b.dataset.d)));
+    renderMenu(); updateBar();
+    const again = document.querySelector(`.item[data-id="${id}"] button[data-d="${b.dataset.d}"]`);
+    if (again && !again.disabled) again.focus();
+  });
+
+  function lines(){ return MENU.filter(m => qty[m.id] > 0).map(m => ({ id:m.id, name:m.name, qty:qty[m.id], price:m.price, sub:m.price*qty[m.id] })); }
+  function updateBar(){
+    const L = lines(), total = L.reduce((a,l)=>a+l.sub,0), n = L.reduce((a,l)=>a+l.qty,0);
+    $("#total").textContent = money(total);
+    $("#count").textContent = n ? L.map(l => l.qty + "× " + l.name).join(", ") : "Pick something tasty";
+    $("#submitBtn").disabled = n === 0;
+  }
+
+  /* ---------- Payment notes ---------- */
+  function payNote(){
+    const v = document.querySelector('input[name="pay"]:checked').value;
+    $("#payNote").innerHTML =
+      v === "Venmo" ? `Venmo <code>${SETTINGS.venmoHandle}</code> and put your name in the note. Pay ahead or on the porch.`
+    : v === "Apple Pay / card" ? (SETTINGS.stripePaymentLink ? "After you place your order, you'll get a secure checkout button for Apple Pay, Google Pay or card." : "Tap to pay with Apple Pay or card at pickup.")
+    : "Bring cash to the porch. Exact change is a kindness, but we'll have some on hand.";
+  }
+  document.querySelectorAll('input[name="pay"]').forEach(r => r.addEventListener("change", payNote));
+
+  /* ---------- Submit ---------- */
+  const orderNo = () => "C-" + Math.random().toString(36).slice(2,6).toUpperCase();
+  $("#orderForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const err = $("#formErr"); err.hidden = true;
+    const name = $("#name").value.trim(), phone = $("#phone").value.trim(), email = $("#email").value.trim();
+    const L = lines();
+    if (!L.length){ err.textContent = "Add at least one item above."; err.hidden = false; return; }
+    if (!name){ err.textContent = "Add your name so we know whose box is whose."; err.hidden = false; $("#name").focus(); return; }
+    if (phone.replace(/\D/g,"").length < 10){ err.textContent = "Add a 10-digit phone number so we can reach you."; err.hidden = false; $("#phone").focus(); return; }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)){ err.textContent = "That email looks off — check it or leave it blank."; err.hidden = false; $("#email").focus(); return; }
+
+    const order = {
+      orderNo: orderNo(), pickup: pickupISO, name, phone, email,
+      notes: $("#notes").value.trim(),
+      payment: document.querySelector('input[name="pay"]:checked').value,
+      items: L.map(l => ({ id:l.id, name:l.name, qty:l.qty, price:l.price })),
+      total: L.reduce((a,l)=>a+l.sub,0),
+    };
+
+    const btn = $("#submitBtn"); btn.disabled = true; btn.classList.add("busy"); btn.textContent = "Sending…";
+    try {
+      if (SETTINGS.sheetUrl){
+        const r = await fetch(SETTINGS.sheetUrl, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(order) });
+        const j = await r.json().catch(() => ({ ok:true }));
+        if (!j.ok) throw new Error(j.error || "Order not saved");
+      }
+      showDone(order);
+    } catch(x){
+      err.textContent = "Your order didn't go through — check your connection and tap Place order again.";
+      err.hidden = false;
+    } finally {
+      btn.classList.remove("busy"); btn.textContent = "Place order"; updateBar();
+    }
+  });
+
+  function showDone(o){
+    $("#formView").hidden = true; $("#bar").hidden = true; $("#doneView").hidden = false;
+    $("#demoNote").hidden = !!SETTINGS.sheetUrl;
+    $("#doneMsg").textContent = `See you ${pickupLong}, ${o.name.split(" ")[0]}. Your order will be boxed and waiting on the porch, ${SETTINGS.pickupHours}.`;
+    $("#receipt").innerHTML =
+      `<div class="ln meta"><span>Order ${o.orderNo}</span><span>${o.payment}</span></div>` +
+      o.items.map(i => `<div class="ln"><span>${i.qty}× ${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join("") +
+      `<div class="ln tot"><span>Total</span><span>${money(o.total)}</span></div>`;
+    $("#payAction").innerHTML =
+      o.payment === "Venmo" ? `<p class="paynote">Venmo <code>${SETTINGS.venmoHandle}</code> · ${money(o.total)} · note “${o.orderNo}”</p>`
+    : (o.payment === "Apple Pay / card" && SETTINGS.stripePaymentLink) ? `<a class="btn-pay" href="${SETTINGS.stripePaymentLink}" target="_blank" rel="noopener">Pay ${money(o.total)} with Apple Pay or card</a>`
+    : "";
+    window.scrollTo({ top:0, behavior:"smooth" });
+  }
+  $("#again").addEventListener("click", () => {
+    MENU.forEach(m => qty[m.id] = 0); $("#notes").value = "";
+    $("#doneView").hidden = true; $("#formView").hidden = false; $("#bar").hidden = false;
+    renderMenu(); updateBar(); window.scrollTo({ top:0 });
+  });
+
+  /* ---------- Load how many are already ordered (for item limits) ---------- */
+  async function loadCounts(){
+    if (!SETTINGS.sheetUrl || !MENU.some(m => m.limit != null)) return;
+    try {
+      const r = await fetch(SETTINGS.sheetUrl + "?pickup=" + pickupISO);
+      const j = await r.json(); counts = j.counts || {}; renderMenu();
+    } catch(_){}
+  }
+
+  renderMenu(); updateBar(); payNote(); loadCounts();
+})();
+</script>
+</body>
+</html>
