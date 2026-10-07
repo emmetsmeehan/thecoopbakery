@@ -1,10 +1,10 @@
 [
   {"id": "sourdough", "name": "Sourdough loaf", "desc": "Crackly crust, open crumb. Our most requested.", "price": 10, "unit": "loaf", "icon": "loaf", "tag": "Most requested", "limit": null},
-  {"id": "coffeecake", "name": "Coffee cake", "desc": "Cinnamon streusel, tender crumb.", "price": 4, "unit": "slice", "icon": "cake", "limit": null},
   {"id": "cinnamon", "name": "Cinnamon roll", "desc": "Soft, swirled, finished with icing.", "price": 5, "unit": "roll", "icon": "roll", "limit": null},
   {"id": "granola", "name": "Pumpkin spice granola", "desc": "Small-batch and warmly spiced.", "price": 8, "unit": "bag", "icon": "jar", "limit": null},
-  {"id": "flowers", "name": "Fresh cut flowers", "desc": "A seasonal bunch for your table.", "price": 8, "unit": "bunch", "icon": "flower", "limit": null},
-  {"id": "cookie8", "name": "Pack of cookies", "desc": "A pack to share, or not.", "price": 10, "unit": "pack", "icon": "cookies", "limit": null},
+  {"id": "coffeecake", "name": "Coffee cake", "desc": "Cinnamon streusel, tender crumb.", "price": 4, "unit": "slice", "icon": "cake", "limit": null},
   {"id": "cookie", "name": "Individual cookie", "desc": "Brown butter, big chunks, flaky salt.", "price": 2, "unit": "cookie", "icon": "cookie", "limit": null},
+  {"id": "cookie8", "name": "Pack of cookies", "desc": "10 to 12 cookies per pack.", "price": 10, "unit": "pack", "icon": "cookies", "limit": null},
+  {"id": "flowers", "name": "Fresh cut flowers", "desc": "A seasonal bunch for your table.", "price": 8, "unit": "bunch", "icon": "flower", "limit": null},
   {"id": "cookbook", "name": "My Air Fryer Cookbook", "desc": "A printed copy to take home.", "price": 20, "unit": "copy", "icon": "book", "limit": null}
 ]
