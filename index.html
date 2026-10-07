@@ -31,7 +31,7 @@ const SETTINGS = {
 
   // Orders close this many days before Saturday, at 11:59 pm (2 = Thursday night)
   cutoffDaysBefore: 2,
-  pickupHours: "9 am – 1 pm",          // shown on the form
+  pickupHours: "about 9 am until sunset",   // shown on the form
 };
 
 // The menu (items, prices, optional weekly limits) lives in menu.json.
@@ -213,7 +213,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
     <section aria-labelledby="h-pay">
       <h2 id="h-pay">How would you like to pay?</h2>
       <div class="pays" role="radiogroup" aria-labelledby="h-pay">
-        <label class="pay"><input type="radio" name="pay" id="pay-cash" value="Cash at pickup" checked><span><b>Cash</b><em>Pay on the porch at pickup</em></span></label>
+        <label class="pay"><input type="radio" name="pay" id="pay-cash" value="Cash at pickup" checked><span><b>Cash</b><em>Exact amount, no change provided</em></span></label>
         <label class="pay"><input type="radio" name="pay" id="pay-venmo" value="Venmo"><span><b>Venmo</b><em>Send before or at pickup</em></span></label>
         <label class="pay"><input type="radio" name="pay" id="pay-card" value="Apple Pay / card"><span><b>Apple Pay</b><em>Or any card, secure checkout</em></span></label>
       </div>
@@ -237,7 +237,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   </div>
 </main>
 
-<footer>Made with butter, on our front porch · Questions? Just knock.</footer>
+<footer>Thank you for supporting our little front-porch bakery.</footer>
 </div>
 
 <div class="bar" id="bar">
@@ -343,7 +343,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
     $("#payNote").innerHTML =
       v === "Venmo" ? `After you place your order, you'll get a button that opens Venmo to <code>${SETTINGS.venmoHandle}</code> with your total filled in.`
     : v === "Apple Pay / card" ? (SETTINGS.onlineCheckout ? "After you place your order, you'll go to a secure checkout page for Apple Pay, Google Pay or card." : "Tap to pay with Apple Pay or card at pickup.")
-    : "Bring cash to the porch. Exact change is a kindness, but we'll have some on hand.";
+    : "Bring the exact amount in cash. Pickup is self-serve, so no change will be provided.";
   }
   document.querySelectorAll('input[name="pay"]').forEach(r => r.addEventListener("change", payNote));
 
