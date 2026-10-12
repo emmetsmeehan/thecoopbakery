@@ -29,6 +29,12 @@ const SETTINGS = {
   venmoHandle: "@flavorsbyfrangipane",
   onlineCheckout: true,                // Apple Pay / card: send customers to Stripe checkout after they order
 
+  // Pickup schedule: the first pickup Saturday, then every N weeks after it
+  // (1 = every Saturday, 2 = every other Saturday). The page moves to the next
+  // pickup on its own once orders close.
+  firstPickup: "2026-10-24",
+  everyWeeks: 2,
+
   // Orders close this many days before Saturday, at 11:59 pm (2 = Thursday night)
   cutoffDaysBefore: 2,
   pickupHours: "about 9 am until sunset",   // shown on the form
@@ -166,7 +172,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
 
 <header>
   <h1><img class="logo" src="logo.png" alt="The Coop" width="560" height="194"></h1>
-  <p class="tagline">Front-porch bakery · <b>Saturdays</b></p>
+  <p class="tagline">Front-porch bakery · <b id="cadence" style="white-space:nowrap">Saturdays</b></p>
 
   <div class="ticket" role="note" aria-live="polite">
     <div class="when">
@@ -274,20 +280,25 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   const qty = Object.fromEntries(MENU.map(m => [m.id, 0]));
   let counts = {}; // already-ordered counts from the sheet (for limits)
 
-  /* ---------- Pickup date: next Saturday whose cutoff hasn't passed ---------- */
+  /* ---------- Pickup date: next scheduled Saturday whose cutoff hasn't passed ---------- */
   function pickup(){
     const now = new Date();
-    const sat = new Date(now); sat.setHours(0,0,0,0);
-    sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7));
+    const step = 7 * Math.max(1, Math.floor(Number(SETTINGS.everyWeeks) || 1));
+    const f = String(SETTINGS.firstPickup || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    let sat;
+    if (f) sat = new Date(+f[1], +f[2]-1, +f[3]);
+    else { sat = new Date(now); sat.setHours(0,0,0,0); }
+    sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7)); // snap forward to a Saturday
     const cutoff = d => { const c = new Date(d); c.setDate(c.getDate() - SETTINGS.cutoffDaysBefore); c.setHours(23,59,59,999); return c; };
-    while (now > cutoff(sat)) sat.setDate(sat.getDate() + 7);
+    while (now > cutoff(sat)) sat.setDate(sat.getDate() + step);
     return { sat, cutoff: cutoff(sat), now };
   }
   const P = pickup();
+  $("#cadence").textContent = SETTINGS.everyWeeks == 2 ? "Every other Saturday" : SETTINGS.everyWeeks > 2 ? "Select Saturdays" : "Saturdays";
   const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   const pickupISO = iso(P.sat);
   const pickupLong = P.sat.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-  const cutoffLong = P.cutoff.toLocaleDateString("en-US",{weekday:"long"}) + " at 11:59 pm";
+  const cutoffLong = P.cutoff.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"}) + " at 11:59 pm";
   $("#pickupDate").textContent = pickupLong;
   $("#pickupSub").textContent = "Porch pickup " + SETTINGS.pickupHours + " · orders close " + cutoffLong;
 

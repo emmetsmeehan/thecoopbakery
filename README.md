@@ -2,7 +2,7 @@
 
 Order form for The Coop, served at https://thecoopbakery.com via GitHub Pages.
 
-The menu (items, prices, optional weekly limits) is `menu.json`. The Venmo handle, pickup hours and order cutoff are in the `SETTINGS` block at the top of `index.html`.
+The menu (items, prices, optional weekly limits) is `menu.json`. The Venmo handle, pickup schedule (first pickup date and how many weeks apart), pickup hours and order cutoff are in the `SETTINGS` block at the top of `index.html`.
 
 ## How orders are saved
 
