@@ -324,7 +324,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
     if (m.limit == null || !countsLoaded) return "";
     if (rem === 0) return `<div class="stock"><div class="meter"><i style="width:0"></i></div><div class="count">Sold out this week <span>· check back next pickup</span></div></div>`;
     return `<div class="stock${rem <= 3 ? " low" : ""}"><div class="meter"><i style="width:${Math.round(rem / m.limit * 100)}%"></i></div>` +
-      `<div class="count">Only ${rem} of ${m.limit} left <span>· pre-order now to reserve yours</span></div></div>`;
+      `<div class="count">${rem < m.limit ? "Only " : ""}${rem} of ${m.limit} left <span>· pre-order now to reserve yours</span></div></div>`;
   }
   function remaining(m){ return m.limit == null ? Infinity : Math.max(0, m.limit - (counts[m.id]||0)); }
   function renderMenu(){
