@@ -1,5 +1,5 @@
 [
-  {"id": "sourdough", "name": "Sourdough loaf", "desc": "Crackly crust, open crumb. Our most requested.", "price": 10, "unit": "loaf", "icon": "loaf", "tag": "Most requested", "limit": null},
+  {"id": "sourdough", "name": "Sourdough loaf", "desc": "Crackly crust, open crumb. Our most requested.", "price": 10, "unit": "loaf", "icon": "loaf", "tag": "Most requested", "limit": 10},
   {"id": "cinnamon", "name": "Cinnamon roll", "desc": "Soft and swirled.", "price": 5, "unit": "roll", "icon": "roll", "limit": null},
   {"id": "granola", "name": "Pumpkin spice granola", "desc": "Small-batch and warmly spiced.", "price": 8, "unit": "bag", "icon": "jar", "limit": null},
   {"id": "coffeecake", "name": "Coffee cake", "desc": "Cinnamon streusel, tender crumb.", "price": 4, "unit": "slice", "icon": "cake", "limit": null},

@@ -101,6 +101,14 @@ h2{font:600 28px/1.15 var(--display);margin:0 0 12px;text-wrap:balance}
 .price{font-variant-numeric:tabular-nums;font-weight:600;font-size:14.5px;margin-top:4px}
 .price span{color:var(--muted);font-weight:500}
 .left{font-size:12.5px;color:var(--barn);font-weight:600;margin-top:2px}
+.stock{margin-top:8px;max-width:260px}
+.stock .meter{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.stock .meter i{display:block;height:100%;background:var(--barn);border-radius:inherit;transition:width .4s ease}
+.stock .count{font-size:13px;font-weight:700;color:var(--barn);margin-top:5px;font-variant-numeric:tabular-nums}
+.stock .count span{font-weight:500;color:var(--muted)}
+.stock.low .count{animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.stock.low .count{animation:none}.stock .meter i{transition:none}}
 
 .stepper{display:flex;align-items:center;gap:2px;background:var(--surface-2);border-radius:999px;padding:4px}
 .stepper button{width:36px;height:36px;border-radius:50%;border:0;background:transparent;color:var(--ink);
@@ -279,6 +287,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   }
   const qty = Object.fromEntries(MENU.map(m => [m.id, 0]));
   let counts = {}; // already-ordered counts from the sheet (for limits)
+  let countsLoaded = false;
 
   /* ---------- Pickup date: next scheduled Saturday whose cutoff hasn't passed ---------- */
   function pickup(){
@@ -311,6 +320,12 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   tick(); setInterval(tick, 30000);
 
   /* ---------- Menu ---------- */
+  function stock(m, rem){
+    if (m.limit == null || !countsLoaded) return "";
+    if (rem === 0) return `<div class="stock"><div class="meter"><i style="width:0"></i></div><div class="count">Sold out this week <span>· check back next pickup</span></div></div>`;
+    return `<div class="stock${rem <= 3 ? " low" : ""}"><div class="meter"><i style="width:${Math.round(rem / m.limit * 100)}%"></i></div>` +
+      `<div class="count">Only ${rem} of ${m.limit} left <span>· pre-order now to reserve yours</span></div></div>`;
+  }
   function remaining(m){ return m.limit == null ? Infinity : Math.max(0, m.limit - (counts[m.id]||0)); }
   function renderMenu(){
     $("#menu").innerHTML = MENU.map(m => {
@@ -321,7 +336,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
           <div class="name">${m.name}${m.tag?`<span class="tag">${m.tag}</span>`:""}</div>
           <div class="desc">${m.desc||""}</div>
           <div class="price">${money(m.price)} <span>/ ${m.unit}</span></div>
-          ${sold ? `<div class="left">Fully booked this week</div>` : rem < 6 ? `<div class="left">Only ${rem} left</div>` : ""}
+          ${stock(m, rem)}
         </div>
         <div class="stepper" role="group" aria-label="${m.name} quantity">
           <button type="button" class="minus" data-d="-1" aria-label="Remove one ${m.name}" ${qty[m.id]?"":"disabled"}>−</button>
@@ -384,6 +399,13 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
       if (SETTINGS.sheetUrl){
         const r = await fetch(SETTINGS.sheetUrl, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(order) });
         const j = await r.json().catch(() => ({ ok:true }));
+        if (j.soldOut){
+          counts = j.counts || counts; countsLoaded = true;
+          MENU.forEach(m => { qty[m.id] = Math.min(qty[m.id], remaining(m)); });
+          renderMenu(); updateBar();
+          err.textContent = (j.error || "Something sold out.") + " We updated your order — check it and tap Place order again.";
+          err.hidden = false; return;
+        }
         if (!j.ok) throw new Error(j.error || "Order not saved");
         if (j.orderNo) order.orderNo = j.orderNo;
         if (j.checkoutUrl){ leaving = true; btn.textContent = "Opening checkout\u2026"; location.href = j.checkoutUrl; return; }
@@ -415,6 +437,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
     : (o.payment === "Apple Pay / card" && SETTINGS.onlineCheckout) ? `<p class="paynote">Online checkout didn't open, so your order is saved and you can pay at pickup.</p>`
     : "";
     window.scrollTo({ top:0, behavior:"smooth" });
+    loadCounts();
   }
   $("#again").addEventListener("click", () => {
     MENU.forEach(m => qty[m.id] = 0); $("#notes").value = "";
@@ -427,9 +450,16 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
     if (!SETTINGS.sheetUrl || !MENU.some(m => m.limit != null)) return;
     try {
       const r = await fetch(SETTINGS.sheetUrl + "?pickup=" + pickupISO);
-      const j = await r.json(); counts = j.counts || {}; renderMenu();
+      const j = await r.json();
+      if (j.ok === false) return;
+      counts = j.counts || {}; countsLoaded = true;
+      MENU.forEach(m => { qty[m.id] = Math.min(qty[m.id], remaining(m)); });
+      renderMenu(); updateBar();
     } catch(_){}
   }
+  // Keep the "left" counts fresh while the page is open.
+  setInterval(() => { if (!document.hidden && !$("#formView").hidden) loadCounts(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) loadCounts(); });
 
   renderMenu(); updateBar(); payNote(); loadCounts();
 
