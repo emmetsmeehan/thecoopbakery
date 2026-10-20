@@ -1,6 +1,6 @@
 [
   {"id": "sourdough", "name": "Sourdough loaf", "desc": "Crackly crust, open crumb. Our most requested.", "price": 10, "unit": "loaf", "icon": "loaf", "tag": "Most requested", "limit": 10},
-  {"id": "maplegranola", "name": "Maple pecan granola", "desc": "Toasty oats, maple and pecans.", "price": 8, "unit": "bag", "icon": "jar", "tag": "New", "limit": null},
+  {"id": "granola", "name": "Pumpkin spice granola", "desc": "Small-batch and warmly spiced.", "price": 8, "unit": "bag", "icon": "jar", "limit": null},
   {"id": "bbsalted", "name": "Salted maple banana bread", "desc": "Cubed and boxed, finished with flaky salt.", "price": 10, "unit": "box", "icon": "box", "tag": "New", "limit": 2},
   {"id": "bananabread", "name": "Banana bread", "desc": "The classic, cubed and boxed.", "price": 10, "unit": "box", "icon": "box", "tag": "New", "limit": 2},
   {"id": "cookie", "name": "Brown butter chocolate chip cookie", "desc": "Big chunks, flaky salt.", "price": 2, "unit": "cookie", "icon": "cookie", "limit": null},
