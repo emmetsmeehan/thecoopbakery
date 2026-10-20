@@ -211,7 +211,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
             <input id="name" name="name" type="text" autocomplete="name" required>
           </label>
           <label class="f" for="phone">Phone <small>for a heads-up text</small>
-            <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="(914) 555-0123" required>
           </label>
         </div>
         <label class="f" for="email">Email <small>optional</small>
@@ -374,16 +374,29 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   }
   document.querySelectorAll('input[name="pay"]').forEach(r => r.addEventListener("change", payNote));
 
+  /* ---------- Phone: always (XXX) XXX-XXXX ---------- */
+  const phoneDigits = v => { let d = String(v).replace(/\D/g,""); if (d.length === 11 && d[0] === "1") d = d.slice(1); return d.slice(0,10); };
+  const fmtPhone = v => { const d = phoneDigits(v);
+    if (d.length < 4) return d.length ? "(" + d : "";
+    if (d.length < 7) return "(" + d.slice(0,3) + ") " + d.slice(3);
+    return "(" + d.slice(0,3) + ") " + d.slice(3,6) + "-" + d.slice(6); };
+  $("#phone").addEventListener("input", e => {
+    const el = e.target, typedDel = e.inputType && e.inputType.startsWith("delete");
+    if (typedDel && !/\d$/.test(el.value)) return; // let backspace through punctuation
+    el.value = fmtPhone(el.value);
+  });
+  $("#phone").addEventListener("blur", e => { e.target.value = fmtPhone(e.target.value); });
+
   /* ---------- Submit ---------- */
   const orderNo = () => "C-" + Math.random().toString(36).slice(2,6).toUpperCase();
   $("#orderForm").addEventListener("submit", async e => {
     e.preventDefault();
     const err = $("#formErr"); err.hidden = true;
-    const name = $("#name").value.trim(), phone = $("#phone").value.trim(), email = $("#email").value.trim();
+    const name = $("#name").value.trim(), phone = fmtPhone($("#phone").value), email = $("#email").value.trim();
     const L = lines();
     if (!L.length){ err.textContent = "Add at least one item above."; err.hidden = false; return; }
     if (!name){ err.textContent = "Add your name so we know whose box is whose."; err.hidden = false; $("#name").focus(); return; }
-    if (phone.replace(/\D/g,"").length < 10){ err.textContent = "Add a 10-digit phone number so we can reach you."; err.hidden = false; $("#phone").focus(); return; }
+    if (phoneDigits($("#phone").value).length !== 10){ err.textContent = "Add a 10-digit phone number so we can reach you."; err.hidden = false; $("#phone").focus(); return; }
     if (email && !/^\S+@\S+\.\S+$/.test(email)){ err.textContent = "That email looks off — check it or leave it blank."; err.hidden = false; $("#email").focus(); return; }
 
     const order = {
