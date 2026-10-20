@@ -387,6 +387,16 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
   });
   $("#phone").addEventListener("blur", e => { e.target.value = fmtPhone(e.target.value); });
 
+  /* ---------- Returning customers: prefill contact info on this device ---------- */
+  try {
+    const c = JSON.parse(localStorage.getItem("coopCustomer") || "null");
+    if (c){
+      if (c.name && !$("#name").value) $("#name").value = c.name;
+      if (c.phone && !$("#phone").value) $("#phone").value = fmtPhone(c.phone);
+      if (c.email && !$("#email").value) $("#email").value = c.email;
+    }
+  } catch(_){}
+
   /* ---------- Submit ---------- */
   const orderNo = () => "C-" + Math.random().toString(36).slice(2,6).toUpperCase();
   $("#orderForm").addEventListener("submit", async e => {
@@ -424,6 +434,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
         if (j.orderNo) order.orderNo = j.orderNo;
         if (j.checkoutUrl){ leaving = true; btn.textContent = "Opening checkout\u2026"; location.href = j.checkoutUrl; return; }
       }
+      try { localStorage.setItem("coopCustomer", JSON.stringify({ name, phone, email })); } catch(_){}
       showDone(order);
     } catch(x){
       err.textContent = "Your order didn't go through — check your connection and tap Place order again.";
