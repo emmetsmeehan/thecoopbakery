@@ -118,7 +118,12 @@ h2{font:600 28px/1.15 var(--display);margin:0 0 12px;text-wrap:balance}
 .stepper button.plus:hover:not(:disabled){background:var(--ink);opacity:.85}
 .stepper button:disabled{opacity:.3;cursor:not-allowed}
 .stepper output{min-width:22px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
-.item.soldout{opacity:.55}
+.item.soldout{position:relative;overflow:hidden}
+.item.soldout > :not(.stamp){opacity:.4}
+.stamp{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:1}
+.stamp span{transform:rotate(-14deg);font:800 clamp(26px,7vw,38px)/1 var(--body);letter-spacing:.14em;text-transform:uppercase;
+  color:#C8102E;border:4px solid #C8102E;border-radius:8px;padding:6px 16px;background:rgba(255,255,255,.55);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.6);white-space:nowrap;mix-blend-mode:multiply}
 
 /* Form fields */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:14px}
@@ -332,6 +337,7 @@ footer{text-align:center;color:var(--muted);font-size:13px;margin-top:36px}
     $("#menu").innerHTML = MENU.map(m => {
       const rem = remaining(m), sold = rem === 0;
       return `<div class="item${qty[m.id]?" on":""}${sold?" soldout":""}" data-id="${m.id}">
+        ${sold?`<div class="stamp" aria-hidden="true"><span>Sold out</span></div>`:""}
         <div class="ico">${ICONS[m.icon]||ICONS.loaf}</div>
         <div class="info">
           <div class="name">${m.name}${m.tag?`<span class="tag">${m.tag}</span>`:""}</div>
